@@ -90,6 +90,16 @@ private:
         return {SYMBOL, std::string(1, advance()), line};
     }
 
+    Token handleStringLiteral() {
+        std::string value;
+        advance(); // Skip the opening quote
+        while (peek() != '"' && peek() != '\0') {
+            value += advance();
+        }
+        if (peek() == '"') advance(); // Skip the closing quote
+        return {STRING_LITERAL, value, line};
+    }
+
 public:
     Lexer(const std::string &input) : input(input) {}
 
@@ -102,6 +112,8 @@ public:
                 tokens.push_back(handleIdentifierOrKeyword());
             } else if (isdigit(current)) {
                 tokens.push_back(handleLiteral());
+            } else if (current == '"') {
+                tokens.push_back(handleStringLiteral());
             } else if (ispunct(current)) {
                 tokens.push_back(handleSymbol());
             } else {
@@ -164,12 +176,6 @@ private:
         return position < tokens.size() ? tokens[position++] : Token{END_OF_FILE, "", -1};
     }
 
-    std::string toUpperCase(const std::string &input) {
-        std::string result = input;
-        std::transform(result.begin(), result.end(), result.begin(), ::toupper);
-        return result;
-    }
-
     void writeIndentedLine(const std::string &line) {
         for (int i = 0; i < indentLevel; ++i) {
             formattedCode << "    "; // 4 spaces for each indentation level
@@ -185,7 +191,7 @@ private:
             std::vector<std::string> arguments;
 
             while (peek().value != ")" && peek().type != END_OF_FILE) {
-                if (peek().type == LITERAL || peek().type == IDENTIFIER) {
+                if (peek().type == LITERAL || peek().type == IDENTIFIER || peek().type == STRING_LITERAL) {
                     arguments.push_back(peek().value);
                 }
                 advance();
@@ -206,14 +212,14 @@ private:
     // Second pass: Validate functions
     void validateFunctionCall() {
         Token functionName = advance();
-        writeIndentedLine(toUpperCase(functionName.value) + " (");
+        writeIndentedLine(functionName.value + " (");
 
         if (peek().value == "(") {
             advance(); // Skip '('
             std::vector<std::string> arguments;
 
             while (peek().value != ")" && peek().type != END_OF_FILE) {
-                if (peek().type == LITERAL || peek().type == IDENTIFIER) {
+                if (peek().type == LITERAL || peek().type == IDENTIFIER || peek().type == STRING_LITERAL) {
                     arguments.push_back(peek().value);
                 }
                 advance();
@@ -254,7 +260,7 @@ private:
             }
         } else if (token.type == KEYWORD) {
             advance();
-            writeIndentedLine(toUpperCase(token.value));
+            writeIndentedLine(token.value);
         } else {
             advance();
             writeIndentedLine(token.value + ";");
